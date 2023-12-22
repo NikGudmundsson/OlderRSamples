@@ -1,0 +1,793 @@
+---
+title: "Example Activity Breakdown"
+author: "Arecibo"
+date: "2023-07-08"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(googlesheets4)
+library(ggplot2)
+library(dplyr)
+library(calendR)
+```
+
+```{r CompleteDatasets, include=FALSE}
+gs4_deauth()
+
+link <- 'https://docs.google.com/spreadsheets/d/1IwVvK4MgdL-bPFxQzIaYyRWW9vBnAufJO8gu0_ZFagI/edit?usp=sharing'
+
+complete_activity_arecibo <- read_sheet(link)
+complete_activity_arecibo <- complete_activity_arecibo %>% rename("MessagesSent" = 'Messages Sent') %>% mutate(FormattedDate = as.Date(Date))
+
+complete_month_activity_arecibo <- read_sheet(ss = 'https://docs.google.com/spreadsheets/d/1IwVvK4MgdL-bPFxQzIaYyRWW9vBnAufJO8gu0_ZFagI/edit?usp=sharing', 
+  range = "Month to Month Complete Historical Activity!A1:B41") %>% 
+  rename("MessagesSent" = 'Messages Sent') %>% 
+  mutate(FormattedMonth = as.Date(Month))
+
+complete_channel_level_activity <- read_sheet(ss = 'https://docs.google.com/spreadsheets/d/1IwVvK4MgdL-bPFxQzIaYyRWW9vBnAufJO8gu0_ZFagI/edit?usp=sharing', 
+  range = "Complete Area of Activity by Channel!G1:H13") %>%
+  rename("MessagesSent" = 'Messages Sent')
+
+complete_section_level_activity <- read_sheet(ss = 'https://docs.google.com/spreadsheets/d/1IwVvK4MgdL-bPFxQzIaYyRWW9vBnAufJO8gu0_ZFagI/edit?usp=sharing', 
+  range = "Complete Area of Activity by Section!D1:E7") %>%
+  rename("MessagesSent" = 'Messages Sent')
+
+complete_area_level_activity <- read_sheet(ss = 'https://docs.google.com/spreadsheets/d/1IwVvK4MgdL-bPFxQzIaYyRWW9vBnAufJO8gu0_ZFagI/edit?usp=sharing', 
+  range = "Complete Area of Activity by Channel Type!A1:B3") %>%
+  rename("MessagesSent" = 'Messages Sent') %>%
+  rename("ChannelType" = 'Channel Type')
+
+complete_activity_arecibo
+complete_month_activity_arecibo
+complete_channel_level_activity
+complete_section_level_activity
+complete_area_level_activity
+```
+
+```{r RecentMonthDatasets, include=FALSE}
+june_2023_activity <- read_sheet(ss = 'https://docs.google.com/spreadsheets/d/1IwVvK4MgdL-bPFxQzIaYyRWW9vBnAufJO8gu0_ZFagI/edit?usp=sharing',
+    range = "Day to Day Complete Historical Activity!A1172:D1201", col_names = FALSE) %>%
+  rename("Date" = '...1') %>%
+  rename("MessagesSent" = '...2') %>%
+  rename("Position" = '...3') %>%
+  rename("Important" = '...4')
+
+june_2023_activity
+```
+\newpage  
+# Table of Contents  
+- Activity Report Overview ................................................... 3  
+- Introduction ............................................................... 4  
+- Methodology and Terms ...................................................... 4  
+- Past Month Message Activity ................................................ 6  
+  - Day to Day Activity Line Chart ........................................... 6  
+  - Histograms of Messages Sent .............................................. 7  
+  - Box Plot of Messages Sent ................................................ 9  
+  - Heat Map of Messages Sent ............................................... 10  
+  - Pie Chart of Activity Location ........................................... x  
+- Complete Message Activity ................................................. 11  
+  - Day to Day Activity Line Chart .......................................... 11  
+  - Month to Month Activity Line Chart ...................................... 12  
+  - Histograms of Messages Sent by Day ...................................... 13  
+  - Histogram of Messages Sent by Month ..................................... 15  
+  - Box Plots of Messages Sent .............................................. 16  
+  - Heat Maps of Messages Sent .............................................. 18  
+  - Pie and Bar Charts of Activity Location ................................. 21  
+- Hybridized Activity ....................................................... 27  
+
+\newpage  
+# Report Overview  
+
+```{r ReportOverviewCalculations, echo=FALSE}
+report_month_sum <- sum(june_2023_activity$MessagesSent)
+report_month_mean <- mean(june_2023_activity$MessagesSent)
+report_month_sd <- sd(june_2023_activity$MessagesSent)
+
+report_cum_complete_sum <- sum(complete_month_activity_arecibo$MessagesSent)
+report_cum_month_mean <- mean(complete_month_activity_arecibo$MessagesSent)
+report_cum_month_sd <- sd(complete_month_activity_arecibo$MessagesSent)
+report_cum_day_mean <- mean(complete_activity_arecibo$MessagesSent)
+report_cum_day_sd <- sd(complete_activity_arecibo$MessagesSent)
+
+if (report_month_sum > report_cum_month_mean) {
+  report_month_comp <- "greater than"
+} else if (report_month_sum < report_cum_month_mean) {
+  report_month_comp <- "less than"
+} else {
+  report_month_comp <- "equal to"
+}
+
+if (report_month_sd > report_cum_day_sd) {
+  report_month_sd_comp <- "greater than"
+} else if (report_month_sd < report_cum_day_sd) {
+  report_month_sd_comp <- "less than"
+} else {
+  report_month_sd_comp <- "equal to"
+}
+
+if (report_month_sum <= 500) {
+  activity_type <- "below expectations"
+} else if (report_month_sum <= 750) {
+  activity_type <- "of concern"
+} else {
+  activity_type <- "satisfactory"
+}
+```
+
+The purpose of the report overview will be to give important standard information about a given person's activity and that alone. The goal of each overview is to reduce all the data in order to make snap decisions. For example, an overview may give flat statements about when a member hits or fails to hit certain goal thresholds, whether a person is over or under performing during a given time period, position rankings, etc. The following only contains a basic information because I do not know what bits will be most useful for the team. Some pieces of information are omitted because I will need a lot more data in order to effectively define them. While the overview is intended to help assist in providing the ability to make a snap judgement, it should always be looked at in context of the rest of the visualizations in the rest of the docs.  
+
+## June 2023 Summary Statistics and Additional Information  
+Total Messages Sent During June 2023: `r report_month_sum`  
+Mean Number of Messages Sent per Day in June 2023: `r report_month_mean`  
+Standard Deviation of Number of Messages Sent per Day in June 2023: `r report_month_sd`  
+
+For this month, the number of messages sent was `r report_month_comp` Arecibo's historical average. As a consequence, the expected number of messages sent during this month is also `r report_month_comp` the historical average. The standard deviation in number of messages sent per day for this month was `r report_month_sd_comp` the historical standard deviation.  
+
+\*I'm going to be real, I don't want to do these calculations rn. In context of historical day to day activity and treating the mean number of messages sent per day as a sample statistic, we can then perform a few different calculations for differences of means in order to try to determine whether or not the most recent month differs from previous ones. Through this process, we obtain a confidence interval of (x, y) which does/does not contain 0. The results of the confidence interval are also reflected in a hypothesis test for differences in mean we get a p-value of x. This means that assuming the true difference of means is 0, the probability that we would get the results that we did would be p. These results suggest that Arecibo's activity this month was normal/abnormal in x way.  
+
+Arecibo's total number of messages sent this month was `r activity_type`.  
+
+## Complete Summary Statistics  
+Total Messages Sent in Server up Until July 2023: `r report_cum_complete_sum`  
+Mean Number of Messages Sent per Day: `r report_cum_day_mean`  
+Standard Deviation of Number of Messages Sent per Day: `r report_cum_day_sd`  
+
+## Notes  
+\* It is important to note that this simple analysis should be approached with significant caution because I believe at least one of the traditional assumptions used to perform this calculation is violated. There are many cases in the real world where that is ok and its ignored, but it is something that may have some negative impact on how actually useful the value is. Use with caution.  
+
+\newpage  
+# Introduction  
+The following pages of this report will display a series of graph displays for the data that can possibly be used to evaluate and understand a given user's activity. I will do my best to give a basic way to interpret the graphs, why they matter, and what the information may suggest. I will only be providing an explanation for what to look for in a graph on one version of a given chart so that things are not super redundant. This is only an example though to get a sense for what is and isn't useful. This is done mostly impromptu (+ w/ the aid of alcohol) and shouldn't be viewed as super professional. If you have any questions, feel free to reach out. I can make a lot of modifications to make parts of the approach more accessible or detailed.  
+
+# Methodology and Terms  
+
+## General Methodology  
+All data is collected via Discord searches at this point. The search terms used are relatively self-explanatory and were as follows:  
+
+**From: [user] During: [date]** -> Returns the number of messages sent on a given day.  
+**From: [user] After: [last day of preceding month] Before: [first day of following month]** -> Returns the number of messages sent in a given month.  
+**From: [user] In: [channel]** -> Returns the number of messages sent in a channel.
+**From: [user] In: [channel] during: [date]** -> Returns the number of messages sent in a channel on a given date. (Not displayed graphically in this document due to the volume of channels)  
+**From: [user] In: [channel] After: [last day of preceding month] Before: [first day of following month]** -> Returns the number of messages sent in a channel during a given month.
+
+For channel level activity collection, I only focused on active channels because those are the only immediately relevant points of interest when evaluating recent activity.  
+
+In the future, consideration towards having data collection be automated should be thoroughly explored.  
+
+Data collected is done with respect to the EST timezone. I use the EST timezone because it's the timezone I am from. I think that for uniformity of comparison, it is a good idea to isolate activity to a singular timezone. However, there is an argument that activity should be collected and analyzed with respect to an individual's own timezone because it will be more accurate to themselves. Because the granularity is on the scale of days, months, and years, I don't think we're losing too much by not collecting relatively, but should we ever want to go below days in granularity, we should take another look at relative data collection.  
+
+All data was compiled within a Google Sheet. Calculations and charts created using the raw data were all done in R. The R scripts are hidden from this document to avoid distractions, but can be provided if desired.  
+
+Currently, the R script is not generalized, but that is something I can do should the team be interested in this sort of visualization.  
+
+While some calculations have been made to confirm the correctness of some calculations, not every part of this document has been proofed. If you spot an issue, feel free to tell me and I can try to correct it.  
+
+## Terms  
+The following are a set of terms that will appear throughout the document that may be useful to know if you are not super familiar with them which is totally ok. These will only be very basic descriptions of the terms. There are a lot of good statistics guides out there that provide a lot better detail on these. I hide a lot of the jargon and background stuff.  
+
+**Mean**: The expected value for some distribution or set of values, the average value. Mean is a measure of center.  
+
+**Standard Deviation**: The average distance that a given data point is away from the mean. Standard deviation is a measure of spread.  
+
+**Median**: The middle value / 50th percentile value. If you were to order a set of numbers in a row such that they are increasing (or decreasing technically), the median would be the value in the middle. Median is a measure of center.  
+
+**Quartile (Q1, Q2, Q3)**: The values at quarterly demerits in a set of data. The mean is Q2 meaning that it is the 50th percentile and sits at the middle. Q1 is the value at the 25th percentile. Q3 is the value at the 75th and so forth.  
+
+**IQR**: IQR means inter-quartile range and is the difference of Q3 and Q1. It represents the range of the middle 50 percent of values in some data set. IQR is a measure of spread.  
+
+**Lowest-Value Number**: The smallest value in the data set that is greater than Q1 minus 1.5 times the IQR. It might not be the actual lowest value in the data set.  
+
+**Highest-Value Number**: The largest value in the data set that is less than Q3 plus 1.5 times the IQR. It might not be the actual highest value in the data set.  
+
+**Outlier**: An unusual data point, that is well beyond any sort of expectation. This term has a much better mathematical definition that actually depends on what you're doing and unusual data point is a misnomer which means something else, but for basic understanding just consider it a unusual data point.  
+
+**Normal Distribution**: A bell shaped curve with really nice statistical properties.  
+
+**CLT**: CLT means Central Limit Theorem. In it's most basic interpretation, it says that when you have a sample size greater than 30, the distribution of the samples is approximately normal. The math behind this is sort of complicated, but it's one of the most important concepts in statistics.  
+
+\newpage  
+# This Past Month's Message Activity  
+The following section looks at Arecibo's activity during the month of June, 2023.  
+
+## Line Chart of Day to Day Activity  
+
+```{r RecentMonthDaytoDayActivityLineChart, echo=FALSE}
+month_activity_line_plot <- ggplot(data = june_2023_activity, 
+    aes(x = Date, y = MessagesSent)) +
+  geom_line(color = "#000080") + 
+  labs(title = "Arecibo's Day to Day Activity over June 2023") + 
+  ylab("Messages Sent") + 
+  geom_point(color = 'red') + 
+  geom_hline(aes(yintercept = mean(MessagesSent), linetype = "Mean"), color = 'green', 
+    lwd = 0.65) + 
+  scale_linetype_manual("Lines", values = c("solid"))
+
+month_activity_line_plot
+```
+**Notes and Remarks**  
+Line charts help visualize trends that occur over some time period. Message activity is something that tends to fluctuate a fair bit so the line often does not follow a discernible, long-term pattern. When they do, it's pretty easily to catch with an "eye test." However, when doing so, be careful to keep an eye on the range of dates involved. Short term patterns are not of particular interest and usually don't tell us much. The sharpness of a line chart will also depend on the scaling of the dependent variable, message activity in this case. If the scale is tighter, the day to day fluctuations will look softer and vice-versa. With these things in mind, it is sometimes possible to get a rough sense of things like repeating events, how consistent is a person's activity, etc. These ideas can then be cross checked either directly with the data or with some of the other charts.  
+
+This line chart has the mean number of messages sent labeled in order to get a sense of the expectation and spread of the distribution in a really rough sense. If a point is above the mean, the member has sent more messages than expected and vice versa. More points being close to the mean line would mean a smaller standard deviation and vice versa. These are approximate checks, but ones that can help guide further investigation with other visualizations.  
+
+This line chart specifically shows the day to day activity of Arecibo during June 2023. The mean for this month is labeled by the green line. Activity fluctuated up and down pretty much all month, but never hits zero. Many of the data points appear to be roughly close to the mean line which is hovering just below 100 messages/day.  
+
+## Histogram of Day to Day Activity for June 2023 with binwidth 25  
+
+```{r RecentMonthDaytoDayActivityHistogram, echo=FALSE}
+month_activity_histogram_bin_25 <- ggplot(data = june_2023_activity, 
+    aes(x = MessagesSent)) +
+  geom_histogram(binwidth = 25, fill = '#000080', color = '#e9ecef') + 
+  labs(title = "Histogram of Day to Day Activity for June 2023 with Binwidth 25") + 
+  xlab("Messages Sent") + 
+  ylab("Count") + 
+  stat_bin(binwidth = 25, geom = "text", size = 2.5, 
+    aes(y = after_stat(count), label = after_stat(count)), vjust = -0.5)
+
+month_activity_histogram_bin_25
+```
+**Notes and Remarks**  
+
+This and the following chart are histograms with different bin widths. Histograms are wonderful way to display quantitative data and its distribution. In this chart, the histogram is made using the counts (# of times an event occurred) where the event was a date in which Arecibo sent between x and x + 24 inclusive messages. For example, if Arecibo sent 23 messages on a given day, the count for the group of 0-24 messages would increase by 1. The counts for each bin are labeled at the top of each bin. The first bin is for dates in which 0-24 messages were sent. The bin width can be modified to create more and more of a fluid chart, though it becomes slightly more difficult to read. Having different binwidths for histograms can help better detect smaller patterns and characteristics of a distribution.  
+
+Histograms are good for understanding the shape of a distribution for some set of data. Using a histogram, one is able to detect whether or not a distribution follows a certain pattern, has x number of modes, a larger or smaller standard deviation/variance, skew and so forth. Detecting patterns with a histogram can help determine whether certain features are worth further investigation or questioning.  
+
+Histograms will give a really good sense of what to expect of a user's activity. Generally speaking, once the sample size is large enough, it can be approximated by a normal distribution. A normal distribution is really nice because the majority of the values are centered around the mean. Using generalizations such as the 68-95-99.7 rule, we can very roughly say that a certain percentage of the total distribution can be found within 1, 2, 3 standard deviations and so forth.  
+
+Activity histograms also can give a sense for when abnormalities in a given time frame may be occurring because there may be some kind of shift in the distribution or counts within a given range of time. It's one way one can tell if someone is over or under performing.  
+
+Histograms should always come with two statistics labeled, the mean and the standard deviation because those provide an empircal number for the center and spread of the distribution.  
+
+The mean for this distribution is `r mean(june_2023_activity$MessagesSent)` and the standard deviation is `r sd(june_2023_activity$MessagesSent)`. It's a little hard to see, but the distribution looks roughly left skewed, meaning that the tail of the distribution to the left looks longer than that of the right. This will mean that the mean will be slightly to left of the median. While a second local maxima exists, it's a little difficult to tell whether or not this distribution is bi-modal.  
+
+## Histogram of Day to Day Activity for June 2023 with binwidth 10  
+
+```{r RecentMonthDaytoDayActivityHistogramBin10, echo=FALSE}
+month_activity_histogram_bin_10 <- ggplot(data = june_2023_activity, 
+    aes(x = MessagesSent)) +
+  geom_histogram(binwidth = 10, fill = '#000080', color = '#e9ecef') + 
+  labs(title = "Histogram of Day to Day Activity for June 2023 with Binwidth 10") + 
+  xlab("Messages Sent") + 
+  ylab("Count") + 
+  stat_bin(binwidth = 10, geom = "text", size = 2.5, 
+    aes(y = after_stat(count), label = after_stat(count)), vjust = -0.5)
+
+month_activity_histogram_bin_10
+```
+**Notes and Remarks**  
+The mean for this distribution is `r mean(june_2023_activity$MessagesSent)` and the standard deviation is `r sd(june_2023_activity$MessagesSent)`. With this binwidth, it's a little easier to see that the distribution is left skewed. The counts for many of the buckets are relatively small so it is probably not a great guess that this distribution is bi-modal.  
+
+## Box Plot of Day to Day Activity for June 2023
+
+```{r RecentMonthDaytoDayActivityBoxplot, echo=FALSE}
+maq3 <- quantile(june_2023_activity$MessagesSent, 0.75)
+maq1 <- quantile(june_2023_activity$MessagesSent, 0.25)
+maiqr <- maq3 - maq1
+mamax_pos <- maq3 + 1.5*maiqr
+
+malargest_value_number <- 0
+for (i in 1:length(june_2023_activity$MessagesSent)) {
+  if (june_2023_activity$MessagesSent[i] > malargest_value_number &&
+      june_2023_activity$MessagesSent[i] < mamax_pos) {
+    malargest_value_number <- june_2023_activity$MessagesSent[i]
+  }
+}
+
+month_activity_boxplot <- ggplot(data = june_2023_activity, 
+    aes(x = MessagesSent, y = "")) + 
+  geom_boxplot(fill = '#000080') + 
+  xlab("Messages Sent") + 
+  ylab("") + 
+  labs(title = "Box Plot of All Day to Day Activity")
+
+month_activity_boxplot
+```
+**Notes and Remarks**
+Box plots are another way to visualize the distribution of some quantitative variable. Box plots are related to quantile measurements which are best recognized by the measures of center and spread, median and IQR. Box plots display the five number summary of the data: lowest value number, Q1, median, Q3, and largest value number.  
+
+The lowest value number is end of the line stretching out from the left side of the box. Q1 is the leftmost side of the box. The median is the line inside of the box. Q3 is the rightmost side of the box. The largest value number is the end of the line stretching out from the right side of the box. Outliers are identified by the additional dots to the left or right of the lines stretching from both sides of the box.  
+
+Box plots also can give a sense of how a distribution looks. If the median line is more visibly on one side or the other of the box and/or the lines out to the lowest/highest value number, then the distribution may have skew towards the direction of those characteristics. This is only approximate, however, and one should be cautious when analyzing distribution shape this way because there really isn't that much information about shape given. You can check against a histogram to confirm or deny certain distribution characteristics.  
+
+This box plot also suggests the left skewedness of the distribution because of the median being much more aligned to the right of the main box. The five point summary for this data is as follows, there is a lowest value number of `r min(june_2023_activity$MessagesSent)`, a Q1 of `r maq1`, a median of `r median(june_2023_activity$MessagesSent)`, a Q3 of `r maq3`, and a largest value number of `r malargest_value_number`. The other value above the largest value number is considered an outlier.  
+
+## Heat Map of Day to Day Activity for June 2023  
+
+```{r JuneActivityHeatmap, echo=FALSE}
+scale_data_june <- function(y) {                            
+ (y / sqrt(sum(y^2)))
+}
+
+normalized_mapping_june <- june_2023_activity$MessagesSent
+
+normalized_mapping_june <- scale_data_june(normalized_mapping_june)
+
+calendR(start_date = june_2023_activity$Date[1], 
+  end_date = june_2023_activity$Date[30], special.days = normalized_mapping_june, 
+  gradient = TRUE, low.col = 'white', special.col = '#FF0000', 
+  title = "June 2023 Activity Heat Map")
+```
+**Notes and Remarks**  
+Heat maps are a fun way to visualize time related data. Heat maps allow one to see when an individual is more or less active and potentially some patterns of activity. In this heat map, the closer a color is to red, the more activity occurred on that day and the closer a color is to white, the less activity occurred that day. The color of the days are determined by a normalization function and the calendR gradient tool. There is a little bit of relativism in the calculation due to how years had to be split up because the library works on a year to year basis. Standard deviation can help tell when there's a lot of variability between days active and line charts can give somewhat of a visual for if activity is more or less bursty, but heat maps often allow for a much easier visualization.  
+
+## Pie Chart 
+
+\newpage  
+# All Time Message Activity  
+The following section looks at the complete picture of Arecibo's activity including their activity pattern prior to becoming a member of the team.  
+
+## Line Chart of Day to Day Activity  
+
+```{r CompleteDaytoDayActivityLineChart, echo=FALSE}
+color_key <- c("Relevant Point" = "red")
+
+all_time_activity_plot <- ggplot(data = complete_activity_arecibo, 
+    aes(x = FormattedDate, y = MessagesSent)) + 
+  geom_line(color = "#000080") + 
+  labs(title = "Arecibo's Day to Day Activity All Time") + 
+  xlab("Date") + 
+  ylab("Messages Sent") + 
+  
+  geom_hline(aes(yintercept = mean(MessagesSent), linetype = "Mean"), color = 'green', 
+    lwd = 0.65) + 
+  scale_linetype_manual("Lines", values = c("solid")) +
+  
+  labs(color = "Points") + 
+  theme(legend.position = c(0.9, 0.8), legend.background = element_blank(), 
+    legend.key = element_blank())
+
+count <- 1
+for (i in 1:length(complete_activity_arecibo$Important)) {
+    
+  if (complete_activity_arecibo$Important[i] == TRUE) {
+    complete_activity_arecibo$Important[i]
+    all_time_activity_plot <- all_time_activity_plot + 
+      geom_point(x = complete_activity_arecibo$FormattedDate[i], y = complete_activity_arecibo$MessagesSent[i],
+        shape = 24, fill = 'red', aes(color = "Relevant")) + 
+      geom_text(label = count, x = complete_activity_arecibo$FormattedDate[i], y = -10, 
+        size = 2.5)
+    
+    count <- count + 1
+  } 
+  
+}
+
+all_time_activity_plot
+```
+**Labeled Dates**  
+1 - Date of Join (March 18, 2020)  
+2 - Added to Team as Imp (June 8, 2020)  
+3 - Promoted to Mod (November 9, 2020)  
+4 - Promoted to Staff (March 2, 2021)  
+5 - Promoted to Co-Owner (May 23, 2021)  
+6 - Start of a 2 Week Break (October 16, 2021)  
+7 - Final Date of Data Collection (June 30, 2023)  
+
+**Notes and Remarks**  
+Line charts with this much data can be somewhat hard to read because individual points are difficult to distinguish, but it looks kind of cool at least.  
+
+Relevant points identify certain personal events that may have activity impact. Relevant dates were selected to mark important dates and transition points for Arecibo's historic activity within the server. Additional points can be added for server context such as when episodes released.  
+
+When there is this much data, you can get a much bigger sense of macro-trends. In this case, we can get the sense that Arecibo's activity appeared to have been the highest in the first half of their stay within the server, that the standard deviation of messages sent per day was probably higher in the first half of Arecibo's presence in the server, and that while activity was lower in the second half, standard deviation was lower. Increasingly Arecibo's activity fell below their historical average.  
+
+## Line Chart of Month to Month Activity  
+
+```{r CompleteMonthtoMonthActivityLineChart, echo=FALSE}
+color_key <- c("Concern Threshold" = "red", "Minimum Acceptable" = "#FFFF00", "Mean" = "green", "Median" = "lightblue")
+
+all_time_activity_plot_by_month <- ggplot(data = complete_month_activity_arecibo, 
+    aes(x = FormattedMonth, y = MessagesSent)) + 
+  geom_line(color = "#000080") + 
+  geom_line(color = "#000080") + 
+  labs(title = "Arecibo's Month to Month Activity All Time") + 
+  xlab("Month") + 
+  ylab("Messages Sent") + 
+  geom_point(color = 'red') + 
+  
+  geom_hline(aes(yintercept = mean(MessagesSent), color = 'Mean'), 
+    lwd = 0.65) + 
+  geom_hline(aes(yintercept = median(MessagesSent), color = 'Median'), 
+    lwd = 0.65) + 
+  
+  labs(color = "Lines") + 
+  theme(legend.position = c(0.88, 0.82), legend.background = element_blank(), 
+    legend.key = element_blank())
+
+all_time_activity_plot_by_month
+```
+**Data Points**  
+- First point is for March 2020.  
+- Last point is for June 2023.  
+- The data for March 2020 is impacted by Arecibo's join date being mid-late March.  
+
+**Notes and Remarks**  
+This form of the line chart with bigger blocks is a little easier to read and see month by month trends. The trends are somewhat arbitrary due to the range being chosen being arbitrary. Events may start in the middle of months and may not be perfectly represented in this chart. In combination with the day to day line chart, these sort of trends may be more easily spotted. 2 horizontal lines have also been included in this chart - the mean and the median. It's pretty easy to see where and when an individual's activity meets, exceeds, or falls below expectations and past behavior.  
+
+We pretty much can come to the same conclusions as the day to day line chart with this one though the pattern is a lot more obvious.  
+
+## Histogram of Day to Day Activity Binwidth 25  
+
+```{r CompleteDaytoDayActivityHistogramBin25, echo=FALSE}
+all_time_activity_histogram <- ggplot(data=complete_activity_arecibo, aes(x=MessagesSent)) +
+  geom_histogram(binwidth = 25, fill = '#000080', color = '#e9ecef') + 
+  xlab("Messages Sent") + 
+  ylab("Count") + 
+  labs(title = "Histogram of Day to Day Activity with Binwidth 25") + 
+  stat_bin(binwidth = 25, geom = "text", size = 2.5, 
+    aes(y = after_stat(count), label = after_stat(count)), vjust = -0.5)
+
+all_time_activity_histogram
+```
+**Notes and Remarks**  
+Because there are 1200 points of data being considered which is greater than a general value of 30, the distribution is approximately normal with mean `r mean(complete_activity_arecibo$MessagesSent)` and standard deviation `r sd(complete_activity_arecibo$MessagesSent)` because of the Central Limit Theorem. Even visually, one can see that the distribution is approximately bell shaped.  
+
+This distribution has some right skew because the right tail, or range of distributions to the right of the main portion of the distribution is longer than that of the left which cannot go below 0. This will mean that the mean will be larger than the median because the mean is less resistant to outliers.  
+
+## Histogram of Day to Day Activity Binwidth 10  
+
+```{r CompleteDaytoDayActivityHistogramBin10, echo=FALSE}
+all_time_activity_histogramBin10 <- ggplot(data=complete_activity_arecibo, aes(x=MessagesSent)) +
+  geom_histogram(binwidth = 10, fill = '#000080', color = '#e9ecef') + 
+  xlab("Messages Sent") + 
+  ylab("Count") + 
+  labs(title = "Histogram of Day to Day Activity with Binwidth 10") + 
+  stat_bin(binwidth = 10, geom = "text", size = 1.5, 
+    aes(y = after_stat(count), label = after_stat(count)), vjust = -0.5)
+
+all_time_activity_histogramBin10
+```
+**Notes and Remarks**  
+Increased granularity of bin size can present additional insights. In the previous chart, we saw a very well defined, very clearly normal looking distribution. When we decrease bin size, a slightly different pattern emerges where it turns out that the distribution actually spikes. In this case, Arecibo had a major jump in occurrences from the 90-99 bucket to the 100-109, 110-119, and 120-129 buckets. Sometimes these quirks can identify that something is going on. In this case, Arecibo, for a substantial amount of time, had self-placed a goal of reaching 100 messages a day. It is thus not by coincidence that there is a spike specifically at the bucket that transitions from below and above that goal. While harder to see, the spike around the 70-79 bucket is caused by a similar event.  
+
+## Histogram of Month to Month Activity  
+
+```{r CompleteMonthtoMonthActivityHistogram, echo=FALSE}
+month_all_time_histogram <- ggplot(data = complete_month_activity_arecibo, aes(x = MessagesSent)) + 
+  geom_histogram(binwidth = 500, fill = '#000080', color = '#e9ecef') + 
+  xlab("Messages Sent") + 
+  ylab("Count") + 
+  labs(title = "Histogram of Month to Month Activity with Binwidth 500") + 
+  stat_bin(binwidth = 500, geom = "text", size = 2.5, 
+    aes(y = after_stat(count), label = after_stat(count)), vjust = -0.5)
+
+month_all_time_histogram
+```
+**Notes and Remarks**  
+This is a histogram of the month to month activity. The total number of months isn't especially large. A good bin width is a little bit unclear for this chart, but this will give a relatively good sense of general activity each month. The mean for this distribution is `r mean(complete_month_activity_arecibo$MessagesSent)` and the standard deviation is `r sd(complete_month_activity_arecibo$MessagesSent)`. The modality of month to month activity is a little bit unclear. There does appear to be a right skew present.  
+
+## Boxplot of Day to Day Activity  
+
+```{r CompleteDaytoDayActivityBoxplot, echo=FALSE}
+q3 <- quantile(complete_activity_arecibo$MessagesSent, 0.75)
+q1 <- quantile(complete_activity_arecibo$MessagesSent, 0.25)
+iqr <- q3 - q1
+max_pos <- q3 + 1.5*iqr
+
+largest_value_number <- 0
+for (i in 1:length(complete_activity_arecibo$MessagesSent)) {
+  if (complete_activity_arecibo$MessagesSent[i] > largest_value_number &&
+      complete_activity_arecibo$MessagesSent[i] < max_pos) {
+    largest_value_number <- complete_activity_arecibo$MessagesSent[i]
+  }
+}
+
+day_all_time_boxplot <- ggplot(data = complete_activity_arecibo, aes(x = MessagesSent, y = "")) + 
+  geom_boxplot(fill = '#000080') + 
+  xlab("Messages Sent") + 
+  ylab("") + 
+  labs(title = "Boxplot of All Day to Day Activity")
+
+day_all_time_boxplot
+```
+**Notes and Remarks**  
+In this chart, we see that the right line and outliers are much longer and stretch farther than those to the left. This suggests that our distribution is right skewed, a fact that we can confirm by looking at the histogram. Interestingly though, the median is almost dead center in the box.  
+
+In this specific distribution, there is a lowest value number of `r min(complete_activity_arecibo$MessagesSent)`, a Q1 of `r quantile(complete_activity_arecibo$MessagesSent, 0.25)`, a median of `r median(complete_activity_arecibo$MessagesSent)`, a Q3 of `r quantile(complete_activity_arecibo$MessagesSent, 0.75)`, and a largest value number of `r largest_value_number`. All other values above the largest value number are considered outliers.  
+
+## Boxplot of Month to Month Activity  
+
+```{r CompleteMonthtoMonthActivityBoxplot, echo=FALSE}
+mq3 <- quantile(complete_month_activity_arecibo$MessagesSent, 0.75)
+mq1 <- quantile(complete_month_activity_arecibo$MessagesSent, 0.25)
+miqr <- mq3 - mq1
+month_max_pos <- mq3 + 1.5*miqr
+
+month_largest_value_number <- 0
+for (i in 1:length(complete_month_activity_arecibo$MessagesSent)) {
+  if (complete_month_activity_arecibo$MessagesSent[i] > month_largest_value_number &&
+      complete_month_activity_arecibo$MessagesSent[i] < month_max_pos) {
+    month_largest_value_number <- complete_month_activity_arecibo$MessagesSent[i]
+  }
+}
+
+month_all_time_boxplot <- ggplot(data = complete_month_activity_arecibo, aes(x = MessagesSent, y = "")) + 
+  geom_boxplot(fill = '#000080') + 
+  xlab("Messages Sent") + 
+  ylab("") + 
+  labs(title = "Boxplot of All Month to Month Activity")
+
+month_all_time_boxplot
+```
+**Notes and Remarks**  
+In this specific distribution, there is a lowest value number of `r min(complete_month_activity_arecibo$MessagesSent)`, a Q1 of `r mq1`, a median of `r median(complete_month_activity_arecibo$MessagesSent)`, a Q3 of `r mq3`, and a largest value number of `r month_largest_value_number`. All other values above the largest value number are considered outliers. In this distribution we see that the median is left shifted which, even in context of the histogram, does send mixed messages on the distribution safe. When this happens, use the histogram. The outlier below the lowest value number is Arecibo's join month where Arecibo joined in the mid-late part of the month.  
+
+## Heatmap of All Activity Year by Year  
+
+```{r CompleteActivityHeatmap, echo=FALSE}
+scale_data <- function(x) {                            
+ (x / sqrt(sum(x^2)))
+}
+
+normalized_mapping_2020 <- c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  complete_activity_arecibo$MessagesSent[1:289])
+normalized_mapping_2021 <- complete_activity_arecibo$MessagesSent[290:654]
+normalized_mapping_2022 <- complete_activity_arecibo$MessagesSent[655:1019]
+normalized_mapping_2023 <- complete_activity_arecibo$MessagesSent[1020:1200]
+
+normalized_mapping_2020 <- scale_data(normalized_mapping_2020)
+normalized_mapping_2021 <- scale_data(normalized_mapping_2021)
+normalized_mapping_2022 <- scale_data(normalized_mapping_2022)
+normalized_mapping_2023 <- scale_data(normalized_mapping_2023)
+
+calendR(start_date = as.Date("2020-03-01"), 
+  end_date = complete_activity_arecibo$FormattedDate[289], special.days = normalized_mapping_2020, 
+  gradient = TRUE, low.col = 'white', special.col = '#FF0000', title = "2020 Activity Heatmap", 
+  weeknames.size = 3)
+
+calendR(start_date = complete_activity_arecibo$FormattedDate[290], 
+  end_date = complete_activity_arecibo$FormattedDate[654], special.days = normalized_mapping_2021, 
+  gradient = TRUE, low.col = 'white', special.col = '#FF0000', title = "2021 Activity Heatmap", 
+  weeknames.size = 3)
+
+calendR(start_date = complete_activity_arecibo$FormattedDate[655], 
+  end_date = complete_activity_arecibo$FormattedDate[1019], special.days = normalized_mapping_2022, 
+  gradient = TRUE, low.col = 'white', special.col = '#FF0000', title = "2022 Activity Heatmap", 
+  weeknames.size = 3)
+
+calendR(start_date = complete_activity_arecibo$FormattedDate[1020], 
+  end_date = complete_activity_arecibo$FormattedDate[1200], special.days = normalized_mapping_2023, 
+  gradient = TRUE, low.col = 'white', special.col = '#FF0000', title = "2023 Activity Heatmap", 
+  weeknames.size = 3)
+```
+**Notes and Remarks**  
+See the heat map note from the June heat map.  
+
+## Pie Chart of Current Channel Complete Activity  
+
+```{r CompleteActivityChannelPieChart, echo=FALSE}
+channel_level_activity_location_piechart <- ggplot(data = complete_channel_level_activity, 
+    aes(x = "", y = MessagesSent, fill = Channel)) + 
+  geom_bar(stat = "identity", width = 1, color = "black") + 
+  coord_polar("y", start = 0) + 
+  scale_fill_manual("Legend", values = c("general-1" = "#ccebc3", "team-bot-commands" = "#8bd3c7", 
+    "hazbin-hotel" = "#d9d9d9", "bots" = "#ffec60", "helluva-boss" = "#fccee6", "shed" = "#bdbbdc",
+    "pics-and-links" = "#7cb1d5", "no-mic" = "#b5dd5e", "spoiler-town" = "#fffeae", "general-2" = "#bc82bf",
+    "roleplay-ooc" = "#fd816e", "other" = "#ffb457")) + 
+  xlab("") + 
+  ylab("") + 
+  labs(title = "Pie Chart of Channel Activity") + 
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+
+nsums <- c(0, 10454, 12956, 16532, 18482, 21907, 30594, 33379, 38349, 45302, 47552, 145994)
+
+channel_level_activity_location_piechart <- channel_level_activity_location_piechart + 
+  geom_text(aes(y = nsums[1] + MessagesSent[2]/2, 
+    label = paste0(as.character(trunc(MessagesSent[2]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+channel_level_activity_location_piechart <- channel_level_activity_location_piechart + 
+  geom_text(aes(y = nsums[2] + MessagesSent[9]/2, 
+    label = paste0(as.character(trunc(MessagesSent[9]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+channel_level_activity_location_piechart <- channel_level_activity_location_piechart + 
+  geom_text(aes(y = nsums[3] + MessagesSent[6]/2, 
+    label = paste0(as.character(trunc(MessagesSent[6]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+channel_level_activity_location_piechart <- channel_level_activity_location_piechart + 
+  geom_text(aes(y = nsums[4] + MessagesSent[11]/2, 
+    label = paste0(as.character(trunc(MessagesSent[11]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+channel_level_activity_location_piechart <- channel_level_activity_location_piechart + 
+  geom_text(aes(y = nsums[5] + MessagesSent[7]/2, 
+    label = paste0(as.character(trunc(MessagesSent[7]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+channel_level_activity_location_piechart <- channel_level_activity_location_piechart + 
+  geom_text(aes(y = nsums[6] + MessagesSent[12]/2, 
+    label = paste0(as.character(trunc(MessagesSent[12]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+channel_level_activity_location_piechart <- channel_level_activity_location_piechart + 
+  geom_text(aes(y = nsums[7] + MessagesSent[8]/2, 
+    label = paste0(as.character(trunc(MessagesSent[8]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+channel_level_activity_location_piechart <- channel_level_activity_location_piechart + 
+  geom_text(aes(y = nsums[8] + MessagesSent[5]/2, 
+    label = paste0(as.character(trunc(MessagesSent[5]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+channel_level_activity_location_piechart <- channel_level_activity_location_piechart + 
+  geom_text(aes(y = nsums[9] + MessagesSent[4]/2, 
+    label = paste0(as.character(trunc(MessagesSent[4]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+channel_level_activity_location_piechart <- channel_level_activity_location_piechart + 
+  geom_text(aes(y = nsums[10] + MessagesSent[10]/2, 
+    label = paste0(as.character(trunc(MessagesSent[10]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+channel_level_activity_location_piechart <- channel_level_activity_location_piechart + 
+  geom_text(aes(y = nsums[11] + MessagesSent[1]/2, 
+    label = paste0(as.character(trunc(MessagesSent[1]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+channel_level_activity_location_piechart <- channel_level_activity_location_piechart + 
+  geom_text(aes(y = nsums[12] + MessagesSent[4]/2, 
+    label = paste0(as.character(trunc(MessagesSent[4]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+channel_level_activity_location_piechart
+```
+**Notes and Remarks**  
+Pie charts are one way to get a sense of proportionality for subsets of a given set, in this case the breakup of individual channel activity and its contribution to total activity. They also can allow for comparison of the proportions, though are generally not an amazing way to do that. To help aid in that goal, generally a bar chart will be used in pair or instead of a piechart. In this piechart, the top 11 channels and the rest of the channels combined into an other option are shown. A good way to use the piechart is to determine the channels that a moderator is frequently and expected to be in the most. In this case, General-1 is very clearly the dominant channel for activity.  
+
+The channel ranking for this and the bar chart below is as follows:  
+
+1. general-1 (98442)  
+2. team-bot-commands (10454)  
+3. hazbin-hotel (6953)  
+4. bots (6389)  
+5. helluva-boss (4970)  
+6. shed (3576)  
+7. pics-and-links (3425)  
+8. no-mic (2785)  
+9. spoiler-town (2502)  
+10. general-2 (2250)  
+11. roleplay-ooc (1950)  
+
+## Bar Chart of Current Channel Complete Activity  
+
+```{r CompleteActivityChannelBarChart, echo=FALSE}
+channel_level_activity_location_barchart <- ggplot(data = complete_channel_level_activity, 
+    aes(x = Channel, y = MessagesSent, fill = Channel)) + 
+  geom_bar(stat = "identity", width = 1, color = "black") + 
+  scale_fill_manual("Legend", values = c("general-1" = "#ccebc3", "team-bot-commands" = "#8bd3c7", 
+    "hazbin-hotel" = "#d9d9d9", "bots" = "#ffec60", "helluva-boss" = "#fccee6", "shed" = "#bdbbdc",
+    "pics-and-links" = "#7cb1d5", "no-mic" = "#b5dd5e", "spoiler-town" = "#fffeae", "general-2" = "#bc82bf",
+    "roleplay-ooc" = "#fd816e", "other" = "#ffb457")) + 
+  xlab("Channel") + 
+  ylab("Messages Sent") + 
+  labs(title = "Bar Chart of Channel Activity") + 
+  geom_text(aes(x = Channel, y = MessagesSent, label = MessagesSent), size = 2.5, vjust = -0.8) + 
+  scale_x_discrete(labels = c("bots", "gen1", "gen2", "hh", "hb", "nm", "other", "p&l", "rpooc","shd", "sptn",
+    "tbc"))
+
+channel_level_activity_location_barchart
+```
+**Notes and Remarks**  
+Bar charts are used either in tandem or instead of piecharts because they provide a much more easily seen comparison between subgroups, especially if subgroups are closer and value as is the case with most of this dataset. With this barchart it is much easier to see which channels had greater activity and the order of that activity.  
+
+## Pie Chart of Current Section Complete Activity  
+
+```{r CompleteActivitySectionPieChart, echo=FALSE}
+section_level_activity_location_piechart <- ggplot(data = complete_section_level_activity, 
+    aes(x = "", y = MessagesSent, fill = Section)) + 
+  geom_bar(stat = "identity", width = 1, color = "black") + 
+  coord_polar("y", start = 0) + 
+  scale_fill_manual("Legend", values = c("VC" = "#8bd3c7", "The Lounge" = "#fffeae", "Roleplay" = "#bdbbdc", 
+    "Pentagram City" = "#fd816e", "Other" = "#7cb1d5", "Moderation" = "#ffb457")) + 
+  xlab("") + 
+  ylab("") + 
+  labs(title = "Pie Chart of Section Activity") + 
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+
+nsums <- c(0, 4390, 123371, 125804, 135426, 137898)
+
+section_level_activity_location_piechart <- section_level_activity_location_piechart +
+  geom_text(aes(y = nsums[1] + MessagesSent[4]/2, 
+    label = paste0(as.character(trunc(MessagesSent[4]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65) +
+  geom_text(aes(y = nsums[2] + MessagesSent[1]/2, 
+    label = paste0(as.character(trunc(MessagesSent[1]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65) +
+  geom_text(aes(y = nsums[3] + MessagesSent[5]/2, 
+    label = paste0(as.character(trunc(MessagesSent[5]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65) +
+  geom_text(aes(y = nsums[4] + MessagesSent[3]/2, 
+    label = paste0(as.character(trunc(MessagesSent[3]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65) +
+  geom_text(aes(y = nsums[5] + MessagesSent[6]/2, 
+    label = paste0(as.character(trunc(MessagesSent[6]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65) +
+  geom_text(aes(y = nsums[6] + MessagesSent[2]/2, 
+    label = paste0(as.character(trunc(MessagesSent[2]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+section_level_activity_location_piechart
+```
+**Notes and Remarks**  
+This pie chart shows the activity breakdown by section. Like the channel breakdown, this helps identify the activity location pattern for a given individual. In this chart, we see that the Lounge makes up the vast majority of total activity.  
+
+The section ranking for this and the bar chart below is as follows:  
+1. The Lounge (118981)  
+2. Moderation (14485)  
+3. Pentagram City (9622)  
+4. VC (4390)  
+5. Roleplay (2433)  
+
+## Bar Chart of Current Channel Complete Activity  
+
+```{r CompleteActivitySectionBarChart, echo=FALSE}
+section_level_activity_location_barchart <- ggplot(data = complete_section_level_activity, 
+    aes(x = Section, y = MessagesSent, fill = Section)) + 
+  geom_bar(stat = "identity", width = 1, color = "black") + 
+  scale_fill_manual("Legend", values = c("VC" = "#8bd3c7", "The Lounge" = "#fffeae",
+    "Roleplay" = "#bdbbdc", "Pentagram City" = "#fd816e", "Other" = "#7cb1d5", "Moderation" = "#ffb457")) + 
+  xlab("Section") + 
+  ylab("Messages Sent") + 
+  labs(title = "Bar Chart of Section Activity") + 
+  geom_text(aes(x = Section, y = MessagesSent, label = MessagesSent), size = 2.5, vjust = -0.8)
+
+section_level_activity_location_barchart
+```
+**Notes and Remarks**  
+This is the accompanying bar chart for the section activity composition pie chart. As seen here as well, activity was highest in The Lounge section.  
+
+## Pie Chart by Activity Type  
+
+```{r ActivityTypePieChart, echo=FALSE}
+activity_type_piechart <- ggplot(data = complete_area_level_activity, 
+    aes(x = "", y = MessagesSent, fill = ChannelType)) + 
+  geom_bar(stat = "identity", width = 1, color = "black") + 
+  coord_polar("y", start = 0) + 
+  scale_fill_manual("Legend", values = c("Moderation" = "#8bd3c7", 
+    "Non-Moderation" = "#fffeae")) + 
+  xlab("") + 
+  ylab("") + 
+  labs(title = "Pie Chart of Activity Type") + 
+  theme_minimal() +
+  theme(panel.grid = element_blank()) + 
+  geom_text(aes(y = MessagesSent[2]/2, 
+    label = paste0(as.character(trunc(MessagesSent[2]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65) + 
+  geom_text(aes(y = MessagesSent[2] + MessagesSent[1]/2, 
+    label = paste0(as.character(trunc(MessagesSent[1]/sum(MessagesSent)*10^4)/100), "%")),
+    size = 2.5, nudge_x = 0.65)
+
+activity_type_piechart
+```
+**Notes and Remarks**  
+This is a pie chart for activity type where the two activity types are moderation and non-moderation. Moderation is for any activity that occurs within a mod specific channel or a channel with the primary intent of moderation occurring such as shed. Non-moderation channels are public channels. This chart is useful because it gives a sense of a whether a mods activity is primarily within or outside of mod channels. This can be used to determine whether a team member has a healthy, constructive activity balance. In Arecibo's case, it's very clear that primary activity occurs outside of mod channels, but a fair bit of activity does occur in a mod context. 
+
+## Bar Chart of Activity Type  
+
+```{r ActivityTypeBarChart, echo=FALSE}
+activity_type_barchart <- ggplot(data = complete_area_level_activity, 
+    aes(x = ChannelType, y = MessagesSent, fill = ChannelType)) + 
+  geom_bar(stat = "identity", width = 1, color = "black") + 
+  scale_fill_manual("Legend", values = c("Moderation" = "#8bd3c7", 
+    "Non-Moderation" = "#fffeae")) + 
+  xlab("Activity Type") + 
+  ylab("Messages Sent") + 
+  labs(title = "Bar Chart of Activity Type") + 
+  geom_text(aes(x = ChannelType, y = MessagesSent, label = MessagesSent), size = 2.5, 
+    vjust = -0.8)
+
+activity_type_barchart
+```
+**Notes and Remarks**  
+Same situation as the other two bar charts where this pairs with the pie chart above.  
+
+\newpage  
+# June 2023 Activity in Direct Context of Historic Activity  
+The only real display where one can see historic to more recent values in the same place is a histogram where activity from given time periods is labeled so that one can see how the distributions differ in the same place. There are a few different ways to go about this which are explored below.  
+
+I ran out of time because I wanted to get this mock up done by the end of this week.  
